@@ -49,6 +49,18 @@ if __name__ == '__main__':
             print('insert dummy photo')
 
 
+    def change_food(event):
+        selection = event.widget.curselection()
+        if selection:
+            sel_name = event.widget.get(selection[0])
+            cc = current_city.get()
+            id = cursor.execute("SELECT id FROM cities WHERE name=?", (cc,)).fetchall()[0][0]
+            curr_food_description = cursor.execute("SELECT description FROM foods WHERE name = ? AND city_id = ?", (sel_name, id,)).fetchall()[0][0]
+            food_description.configure(text=curr_food_description)
+        else:
+            print('insert dummy food')
+
+
     def play_song(song):
         cc = current_city.get()
         id = cursor.execute("SELECT id FROM cities WHERE name=?", (cc,)).fetchall()[0][0]
@@ -284,6 +296,7 @@ if __name__ == '__main__':
     # foods list container
     foods = Listbox(food_container)
     foods.pack()
+    foods.bind("<<ListboxSelect>>", change_food)
     # Description
     food_description = Label(food_container, text="Food Description")
     food_description.pack()
