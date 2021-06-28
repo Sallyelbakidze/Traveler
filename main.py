@@ -174,15 +174,17 @@ if __name__ == '__main__':
 
 
     def add_food():
-        name = food_name_entry.get()
-        food_name_entry.delete(0, END)
-        description = food_description_text.get("1.0", END)
-        food_description_text.delete("1.0", END)
-        city_id = cursor.execute("SELECT id FROM cities WHERE name=?", (current_city.get(),)).fetchall()[0][0]
-        cursor.execute("INSERT INTO foods (city_id,name,description) VALUES(?, ?, ?)",
+        if food_name_entry.get():
+            if food_description_text.get("1.0", END) != "\n":
+                name = food_name_entry.get()
+                food_name_entry.delete(0, END)
+                description = food_description_text.get("1.0", END)
+                food_description_text.delete("1.0", END)
+                city_id = cursor.execute("SELECT id FROM cities WHERE name=?", (current_city.get(),)).fetchall()[0][0]
+                cursor.execute("INSERT INTO foods (city_id,name,description) VALUES(?, ?, ?)",
                        (city_id, name, description))
-        conn.commit()
-        update_foods()
+                conn.commit()
+                update_foods()
 
 
     root = Tk()
@@ -297,6 +299,7 @@ if __name__ == '__main__':
     foods = Listbox(food_container)
     foods.pack()
     foods.bind("<<ListboxSelect>>", change_food)
+    insert_foods(foods, current_city.get())
     # Description
     food_description = Label(food_container, text="Food Description")
     food_description.pack()
