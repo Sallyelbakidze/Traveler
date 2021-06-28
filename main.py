@@ -163,7 +163,9 @@ if __name__ == '__main__':
 
     def add_food():
         name = food_name_entry.get()
+        food_name_entry.delete(0, END)
         description = food_description_text.get("1.0", END)
+        food_description_text.delete("1.0", END)
         city_id = cursor.execute("SELECT id FROM cities WHERE name=?", (current_city.get(),)).fetchall()[0][0]
         cursor.execute("INSERT INTO foods (city_id,name,description) VALUES(?, ?, ?)",
                        (city_id, name, description))
