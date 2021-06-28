@@ -20,6 +20,7 @@ else:
     cursor.execute("CREATE TABLE songs (path TEXT, city_id INTEGER, title TEXT, artist TEXT, description TEXT)")
     cursor.execute("CREATE TABLE cities (id INTEGER PRIMARY KEY, name TEXT)")
     cursor.execute("CREATE TABLE photos (path TEXT, city_id INTEGER, name TEXT)")
+    cursor.execute("CREATE TABLE foods (city_id INTEGER, name TEXT, description TEXT)")
 
 
 if __name__ == '__main__':
@@ -29,6 +30,7 @@ if __name__ == '__main__':
     def update_data(*args):
         update_songs()
         update_photos()
+        update_foods()
 
 
     def change_photo(event):
@@ -77,6 +79,16 @@ if __name__ == '__main__':
                 lb.insert(0, row[0])
 
 
+    def insert_foods(lb, cc):
+        foods.delete(0, 'end')
+        statement = cursor.execute("SELECT id FROM cities WHERE name=?", (cc,)).fetchall()
+        if statement:
+            id = cursor.execute("SELECT id FROM cities WHERE name=?", (cc,)).fetchall()[0][0]
+            rows = cursor.execute("SELECT name FROM foods WHERE city_id=?", (id,)).fetchall()
+            for row in rows:
+                lb.insert(0, row[0])
+
+
     def stop_song():
         mixer.music.stop()
 
@@ -93,13 +105,17 @@ if __name__ == '__main__':
             optMenu['menu'].add_command(label=city_name, command=tk._setit(current_city, city_name))
 
 
-    def update_songs(*args):
+    def update_songs():
         insert_songs(songs, current_city.get())
 
 
-    def update_photos(*args):
+    def update_photos():
         insert_photos(photos, current_city.get())
         photo_display_label.configure(image=def_photo_conv)
+
+
+    def update_foods():
+        insert_foods(foods, current_city.get())
 
 
     def browse_files():
@@ -143,6 +159,16 @@ if __name__ == '__main__':
                        (os.path.basename(filepath), city_id, name))
         conn.commit()
         update_photos()
+
+
+    def add_food():
+        name = food_name_entry.get()
+        description = food_description_text.get("1.0", END)
+        city_id = cursor.execute("SELECT id FROM cities WHERE name=?", (current_city.get(),)).fetchall()[0][0]
+        cursor.execute("INSERT INTO foods (city_id,name,description) VALUES(?, ?, ?)",
+                       (city_id, name, description))
+        conn.commit()
+        update_foods()
 
 
     root = Tk()
@@ -194,7 +220,7 @@ if __name__ == '__main__':
     add = tk.Button(add_container, text="Add City", command=lambda: add_city(new_city.get()))
     add.pack(side=RIGHT, padx=10)
 
-    # songs
+    # songs list container
     songs = Listbox(song_container)
     insert_songs(songs, current_city.get())
     songs.pack()
@@ -253,8 +279,25 @@ if __name__ == '__main__':
     upload_photo_button = Button(add_photo_container, text="Upload", command=upload_photo)
     upload_photo_button.grid(row=2, column=0, pady=10)
 
-    # food
+    # foods list container
     foods = Listbox(food_container)
     foods.pack()
+    # Description
+    food_description = Label(food_container, text="Food Description")
+    food_description.pack()
+    # Add Food Container
+    add_food_container = Frame(food_container, bg="lightgrey")
+    add_food_container.pack(pady=100)
+    food_name_label = Label(add_food_container, text="Name")
+    food_name_label.grid(row=0, column=0, pady=10)
+    food_name_entry = Entry(add_food_container)
+    food_name_entry.grid(row=0, column=1)
+    food_description_label = Label(add_food_container, text="Description")
+    food_description_label.grid(row=1, column=0, pady=10)
+    food_description_text = Text(add_food_container, width=26, height=3)
+    food_description_text.grid(row=1, column=1)
+    add_food_button = Button(add_food_container, text="Add", width=10, command=add_food)
+    add_food_button.grid(row=2, column=1, pady=10)
+
 
     root.mainloop()
