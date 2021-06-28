@@ -10,7 +10,7 @@ import os.path
 from os import path
 
 
-# delete db if it exists
+# connect if DB exists else create one
 if path.exists("SQLite_Python.db"):
     conn = sqlite3.connect("SQLite_Python.db")
     cursor = conn.cursor()
@@ -20,32 +20,6 @@ else:
     cursor.execute("CREATE TABLE songs (path TEXT, city_id INTEGER, title TEXT, artist TEXT, description TEXT)")
     cursor.execute("CREATE TABLE cities (id INTEGER PRIMARY KEY, name TEXT)")
     cursor.execute("CREATE TABLE photos (path TEXT, city_id INTEGER, name TEXT)")
-    cursor.execute("INSERT INTO cities (name) VALUES('Paris')")
-    cursor.execute("INSERT INTO cities (name) VALUES('Rome')")
-    cursor.execute("INSERT INTO cities (name) VALUES('Berlin')")
-    cursor.execute("INSERT INTO cities (name) VALUES('Barcelona')")
-    cursor.execute("INSERT INTO cities (name) VALUES('Tbilisi')")
-    cursor.execute(
-        "INSERT INTO songs (path,city_id,title,artist,description) VALUES('La_vien_rose.mp3', 1, 'La_vien_rose', 'Edith Piaf', 'Released: 1947')")
-    cursor.execute(
-        "INSERT INTO songs (path,city_id,title,artist,description) VALUES('Di_doo_dah.mp3', 1, 'Di_doo_dah', 'Jane_Birkin', 'Released: 1973')")
-    cursor.execute(
-        "INSERT INTO songs (path,city_id,title,artist,description) VALUES('Heart_of_Rome.mp3', 2, 'Heart_of_Rome', 'Elvis Presley', 'Released: 1971')")
-    cursor.execute(
-        "INSERT INTO songs (path,city_id,title,artist,description) VALUES('Via_con_me.mp3', 2, 'Via_con_me', 'Paolo Conte', 'Released: 1998')")
-    cursor.execute(
-        "INSERT INTO songs (path,city_id,title,artist,description) VALUES('Deutschland.mp3', 3, 'Deutschland', 'Rammstein', 'Released: 2019')")
-    cursor.execute(
-        "INSERT INTO songs (path,city_id,title,artist,description) VALUES('Ohne_dich.mp3', 3, 'Ohne_dich', 'Ramsstein', 'Released: 2004')")
-    cursor.execute(
-        "INSERT INTO songs (path,city_id,title,artist,description) VALUES('Barcelona_1.mp3', 4, 'Barcelona_1', 'freddie mercury and montserrat caballé', 'Released: 1988')")
-    cursor.execute(
-        "INSERT INTO songs (path,city_id,title,artist,description) VALUES('Barcelona_2.mp3', 4, 'Barcelona_2', 'giulia y los tellarini', 'released:2008')")
-    cursor.execute(
-        "INSERT INTO songs (path,city_id,title,artist,description) VALUES('Tbiliso.mp3', 5, 'Tbiliso', 'Niaz Diasamidze', 'Released: 2005')")
-    cursor.execute(
-        "INSERT INTO songs (path,city_id,title,artist,description) VALUES('She_is_here.mp3', 5, 'She_is_here', 'Giya Kancheli', 'Released: 1974')")
-    conn.commit()
 
 
 if __name__ == '__main__':
@@ -61,7 +35,9 @@ if __name__ == '__main__':
         selection = event.widget.curselection()
         if selection:
             sel_name = event.widget.get(selection[0])
-            cur_photo_path = cursor.execute("SELECT path FROM photos WHERE name = ?", (sel_name,)).fetchall()[0][0]
+            cc = current_city.get()
+            id = cursor.execute("SELECT id FROM cities WHERE name=?", (cc,)).fetchall()[0][0]
+            cur_photo_path = cursor.execute("SELECT path FROM photos WHERE name = ? AND city_id = ?", (sel_name, id, )).fetchall()[0][0]
             cur_photo = Image.open(cur_photo_path)
             cur_photo_resized = cur_photo.resize((200, 200), Image.ANTIALIAS)
             cur_photo_conv = ImageTk.PhotoImage(cur_photo_resized)
@@ -72,7 +48,9 @@ if __name__ == '__main__':
 
 
     def play_song(song):
-        cursor.execute("SELECT path FROM songs WHERE title = ?", (song,))
+        cc = current_city.get()
+        id = cursor.execute("SELECT id FROM cities WHERE name=?", (cc,)).fetchall()[0][0]
+        cursor.execute("SELECT path FROM songs WHERE title = ? AND city_id = ?", (song, id, ))
         song_path = cursor.fetchall()[0][0]
         mixer.init()
         mixer.music.load(song_path)
@@ -81,18 +59,22 @@ if __name__ == '__main__':
 
     def insert_songs(lb, cc):
         songs.delete(0, 'end')
-        id = cursor.execute("SELECT id FROM cities WHERE name=?", (cc,)).fetchall()[0][0]
-        rows = cursor.execute("SELECT title FROM songs WHERE city_id=?", (id,)).fetchall()
-        for row in rows:
-            lb.insert(0, row[0])
+        statement = cursor.execute("SELECT id FROM cities WHERE name=?", (cc,)).fetchall()
+        if statement:
+            id = cursor.execute("SELECT id FROM cities WHERE name=?", (cc,)).fetchall()[0][0]
+            rows = cursor.execute("SELECT title FROM songs WHERE city_id=?", (id,)).fetchall()
+            for row in rows:
+                lb.insert(0, row[0])
 
 
     def insert_photos(lb, cc):
         photos.delete(0, 'end')
-        id = cursor.execute("SELECT id FROM cities WHERE name=?", (cc,)).fetchall()[0][0]
-        rows = cursor.execute("SELECT name FROM photos WHERE city_id=?", (id,)).fetchall()
-        for row in rows:
-            lb.insert(0, row[0])
+        statement = cursor.execute("SELECT id FROM cities WHERE name=?", (cc,)).fetchall()
+        if statement:
+            id = cursor.execute("SELECT id FROM cities WHERE name=?", (cc,)).fetchall()[0][0]
+            rows = cursor.execute("SELECT name FROM photos WHERE city_id=?", (id,)).fetchall()
+            for row in rows:
+                lb.insert(0, row[0])
 
 
     def stop_song():
@@ -100,6 +82,9 @@ if __name__ == '__main__':
 
 
     def add_city(city_name):
+        if 'Select A City' in cities:
+            optMenu.children['menu'].delete('Select A City')
+            cities.remove('Select A City')
         if city_name:
             cursor.execute("INSERT INTO cities (name) VALUES(?)", (city_name,))
             conn.commit()
@@ -114,6 +99,7 @@ if __name__ == '__main__':
 
     def update_photos(*args):
         insert_photos(photos, current_city.get())
+        photo_display_label.configure(image=def_photo_conv)
 
 
     def browse_files():
@@ -191,7 +177,11 @@ if __name__ == '__main__':
     for row in rows:
         cities.append(row[0])
     current_city = StringVar()
-    current_city.set(cities[0])
+    if cities:
+        current_city.set(cities[0])
+    else:
+        cities.append('Select A City')
+        current_city.set(cities[0])
     current_city.trace('w', update_data)
     optMenu = OptionMenu(city_container, current_city, *cities)
     optMenu.pack(pady=10)
@@ -244,6 +234,10 @@ if __name__ == '__main__':
     insert_photos(photos, current_city.get())
     # photo display container
     photo_display_label = Label(photo_container)
+    def_photo = Image.open('default.jpg')
+    def_photo_resized = def_photo.resize((200, 200), Image.ANTIALIAS)
+    def_photo_conv = ImageTk.PhotoImage(def_photo_resized)
+    photo_display_label.configure(image=def_photo_conv)
     photo_display_label.pack()
     # add photo container
     add_photo_container = Frame(photo_container, bg="lightgray")
